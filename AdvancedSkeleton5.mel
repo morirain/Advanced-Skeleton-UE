@@ -2038,6 +2038,8 @@ frameLayout -w 270 -cll 1 -cl 1 -cc asFL -ec asFL -l "Export" asExportFrameLayou
 				button -w 140 -l "Rebuild dagPose nodes" -c asReBuildDagPose;
 				separator -st none -h 5;
 				button -w 140 -l "FBX export" -c asFbxExport;
+				separator -st none -h 5;
+				button -w 140 -l "FBX export(Only Bone)" -c asFbxOnlyBoneExport;
 				setParent..;
 			setParent..;
 
@@ -38487,8 +38489,8 @@ global proc asReBuildDagPose ()
 select `ls -type dagPose "bindPose*"`;
 if (size(`ls -sl`)) delete;
 select -hi Root_M;
-if (`objExists |root`) //Unreal Skeleton
-	select -hi |root;
+if (`objExists UnrealRoot`) //Unreal Skeleton
+	select -hi UnrealRoot;
 select -d `ls -sl "*Constraint*"`;
 string $bindPoseNode=`dagPose -save -selection -bindPose -name bindPose`;
 select -cl;
@@ -38504,16 +38506,40 @@ for ($plug in $plugins)
 
 select -r DeformationSystem Geometry;
 if (`objExists UnrealRoot`) //Unreal Skeleton
-	$tempString=`listRelatives -c DeformationSystem`;
-	parent -w $tempString;
-	select UnrealRoot Geometry;
+	$tempBone=`listRelatives -c DeformationSystem`;
+	parent -w $tempBone;
+	$tempMesh=`listRelatives -c Geometry`;
+	parent -w $tempMesh;
+	select $tempBone $tempMesh;
 refresh;
 
 optionVar -sv "defaultFileExportActiveType" "FBX export";
 ExportSelection;
 if (`objExists UnrealRoot`) //Unreal Skeleton
-	parent $tempString DeformationSystem;
+	parent $tempBone DeformationSystem;
+	parent $tempMesh Geometry;
 }
+
+global proc asFbxOnlyBoneExport ()
+{
+string $plugins[]=`pluginInfo -q -ls`;
+for ($plug in $plugins)
+	if (!`stringArrayCount "fbxmaya" $plugins`)
+	error "You Must Load the \"fbxmaya\" plugin !";
+
+select -r DeformationSystem;
+if (`objExists UnrealRoot`) //Unreal Skeleton
+	$tempBone=`listRelatives -c DeformationSystem`;
+	parent -w $tempBone;
+	select $tempBone;
+refresh;
+
+optionVar -sv "defaultFileExportActiveType" "FBX export";
+ExportSelection;
+if (`objExists UnrealRoot`) //Unreal Skeleton
+	parent $tempBone DeformationSystem;
+}
+
 
 global proc asDeleteAdvanced ()
 {
